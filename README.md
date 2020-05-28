@@ -72,3 +72,66 @@ Add dependencies: org.springframework.kafka, spring-boot-starter-web and Lombok.
         </dependency>
 </dependencies>
 ```
+
+## Step 7.
+To send a message we need to create an object - KafkaTemplate<K, V>. 
+This object will be created in a controller class. 
+
+We need to call the send method from this object with parameters - send(String topic, K key, V value).
+If the topic named in the method doesn't exist yet, it will be created automatically.
+The producer is ready.
+
+Our controller maps to localhost:8080/message.
+```java
+@RestController
+@RequestMapping("message")
+@RequiredArgsConstructor
+public class MessageController {
+
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
+    @PostMapping
+    public void send(String msgId, String msg) {
+        kafkaTemplate.send("New_topic", msgId, msg);
+    }
+}
+```
+## Step 8.
+To create a consumer we need to create method with annotation @KafkaListener with a topic name in the parameters.
+The method has a single parameter - a message with a type passed by the producer. 
+We also need to mark the class in which the consumer is created with the annotation @EnableKafka.
+```java
+@EnableKafka
+@SpringBootApplication
+public class KafkaProducerConsumerApplication {
+
+    @KafkaListener(topics="New_topic")
+    public void messageListener(String message) {
+        System.out.println(message);
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(KafkaProducerConsumerApplication.class, args);
+    }
+
+}
+```
+It is necessary to write the group-id for the consumer in application.properties. Otherwise, the application will not start.
+```properties
+spring.kafka.consumer.group-id=app.1
+```
+
+## Step 9
+The simple project is ready. Now We need to send a request with a key and value of type String using Postman.
+
+```json
+{
+  "msgId": "1",
+  "msg": "Hello, World!"
+}
+```
+
+If we received this message in the console, everything works correctly!
+```
+Hello, World!
+```
