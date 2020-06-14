@@ -18,7 +18,7 @@ mkdir data/kafka
 ```
 
 ## Step 3.
-Confugure Zookeeper.
+Configure Zookeeper.
 - find the folder "config";
 - open the file "zookeeper.properties";
 - find and change the path for dataDir to the desired directory.
@@ -32,7 +32,7 @@ dataDir=/Users/user/Applications/kafka_2.13-2.5.0/data/zookeeper
 ```
 
 ## Step 4.
-Confugure Kafka server.
+Configure Kafka server.
 - find the folder "config";
 - open the file "server.properties";
 - find and change the path for log.dirs to the desired directory.
@@ -134,4 +134,116 @@ The simple project is ready. Now We need to send a request with a key and value 
 If we received this message in the console, everything works correctly!
 ```
 Hello, World!
+```
+This is a very simple configuration.
+
+A real project using Kafka is more complicated. 
+
+## Step 10.
+To get the result of posting messages you need to add ListenableFuture<SendResult<K, V>> 
+and call the addCallback method with parameters - SuccessCallback and FailureCallback.
+
+These are functional interfaces. The method of the first interface will be called in case of successful sending of the message, 
+and the method of the second interface in case of failure.
+```java
+public void send(String msgId, String msg) {
+        ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send("New_topic", msgId, msg);
+        future.addCallback(System.out::println, System.err::println);
+        kafkaTemplate.flush();
+    }
+```
+We will receive:
+```
+SendResult [producerRecord=ProducerRecord(topic=New_topic, partition=null, headers=RecordHeaders(headers = [], isReadOnly = true), key=1, value=Hello, World!, timestamp=null), recordMetadata=New_topic-0@2]
+```
+
+## Step 11.
+
+To set Long as the key type and DTO as the value type, you need to manually create the KafkaTemplate object.
+
+The object of ProducerFactory<K, V> interface is passed to the constructor as a parameter.
+For example, DefaultKafkaProducerFactory<> with producer's config s a parameter.
+Therefore, the next step is to create KafkaProducerConfig and configure the producer’s parameters.
+11.1. Create a UserDTO class
+```java
+@Data
+public class UserDTO {
+
+    private long age;
+    private String name;
+    private Address address;
+}
+
+@Data
+@AllArgsConstructor
+public class Address {
+
+    private String country;
+    private String city;
+    private String street;
+    private long homeNumber;
+    private long flatNumber;
+}
+```
+ 
+ 11.2. Create a KafkaProducerConfig class.
+```java
+@Configuration
+public class KafkaProducerConfig {
+    
+    @Bean
+    public Map<String, Object> producerConfigs() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return props;
+    }
+
+    @Bean
+    public ProducerFactory<Long, UserDTO> producerFactory() {
+        return new DefaultKafkaProducerFactory<>(producerConfigs());
+    }
+
+    @Bean
+    public KafkaTemplate<Long, UserDTO> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
+}
+```
+11.3. Fix changes in a MesssageController class.
+```java
+@RestController
+@RequestMapping("message")
+@RequiredArgsConstructor
+public class MessageController {
+
+    private final KafkaTemplate<Long, UserDTO> kafkaTemplate;
+
+    @PostMapping
+    public void send(Long msgId, UserDTO msg) {
+        ListenableFuture<SendResult<Long, UserDTO>> future = kafkaTemplate.send("New_topic", msgId, msg);
+        future.addCallback(System.out::println, System.err::println);
+        kafkaTemplate.flush();
+    }
+}
+```
+
+## Step 12.
+Make a request in Postman.
+```json
+{
+	"msgId": 1,
+	"msg":{ 
+		"age": 18,
+		"name" : "Igor",
+		"address":{
+			"country": "Russia",
+			"city": "Moscow",
+			"street": "Lenina",
+			"homeNumber":2,
+			"flatNumber":100
+		}
+	}
+}
 ```
