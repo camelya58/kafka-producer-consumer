@@ -11,10 +11,6 @@ import org.springframework.kafka.annotation.KafkaListener;
 @SpringBootApplication
 public class KafkaProducerConsumerApplication {
 
- //   @KafkaListener(topics="New_topic")
-//    public void messageListener(String message) {
-//        System.out.println(message);
-//    }
     @KafkaListener(topics="msg")
     public void orderListener(ConsumerRecord<Long, UserDTO> record) {
         System.out.println(record.partition());

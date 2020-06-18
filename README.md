@@ -1,13 +1,14 @@
 # kafka-producer-consumer
 Simple project with Apache Kafka to demonstrate message exchange.
 
-Stack: Apache Kafka, Maven, Lombok
+Stack: Apache Kafka, Maven, Lombok.
 
 ## Step 1
 Install Apache Kafka for MacOS X.
 ```
 brew install kafka
 ```
+You can skip steps 2-4 as unnecessary.
 ## Step 2.
 Create directories to save the data.
 ```
@@ -55,6 +56,7 @@ zookeeper-server-start /usr/local/etc/kafka/zookeeper.properties & kafka-server-
 Open IntelliJ IDEA and create spring project.
 
 Add dependencies: org.springframework.kafka, spring-boot-starter-web and Lombok.
+Or you can you [Spring initializr](https://start.spring.io/).
 ```xml
 <dependencies>
         <dependency>
@@ -74,7 +76,8 @@ Add dependencies: org.springframework.kafka, spring-boot-starter-web and Lombok.
 ```
 
 ## Step 7.
-To send a message we need to create an object - KafkaTemplate<K, V>. 
+To send a message we need to create an object - KafkaTemplate<K, V> (the default key and value type is string). 
+
 This object will be created in a controller class. 
 
 We need to call the send method from this object with parameters - send(String topic, K key, V value).
@@ -84,7 +87,7 @@ The producer is ready.
 Our controller maps to localhost:8080/message.
 ```java
 @RestController
-@RequestMapping("message")
+@RequestMapping("msg")
 @RequiredArgsConstructor
 public class MessageController {
 
@@ -92,7 +95,7 @@ public class MessageController {
 
     @PostMapping
     public void send(String msgId, String msg) {
-        kafkaTemplate.send("New_topic", msgId, msg);
+        kafkaTemplate.send("msg", msgId, msg);
     }
 }
 ```
@@ -105,7 +108,7 @@ We also need to mark the class in which the consumer is created with the annotat
 @SpringBootApplication
 public class KafkaProducerConsumerApplication {
 
-    @KafkaListener(topics="New_topic")
+    @KafkaListener(topics="msg")
     public void messageListener(String message) {
         System.out.println(message);
     }
@@ -118,18 +121,12 @@ public class KafkaProducerConsumerApplication {
 ```
 It is necessary to write the group-id for the consumer in application.properties. Otherwise, the application will not start.
 ```properties
-spring.kafka.consumer.group-id=app.1
+spring.kafka.consumer.group-id=app.2
 ```
 
 ## Step 9
 The simple project is ready. Now We need to send a request with a key and value of type String using Postman.
-
-```json
-{
-  "msgId": "1",
-  "msg": "Hello, World!"
-}
-```
+![Image alt](https://github.com/camelya58/kafka-producer-consumer/raw/sophistication/images/image1.png)
 
 If we received this message in the console, everything works correctly!
 ```
@@ -154,7 +151,8 @@ public void send(String msgId, String msg) {
 ```
 We will receive:
 ```
-SendResult [producerRecord=ProducerRecord(topic=New_topic, partition=null, headers=RecordHeaders(headers = [], isReadOnly = true), key=1, value=Hello, World!, timestamp=null), recordMetadata=New_topic-0@2]
+SendResult [producerRecord=ProducerRecord(topic=New_topic, partition=null, headers=RecordHeaders(headers = [], 
+isReadOnly = true), key=1, value=Hello, World!, timestamp=null), recordMetadata=New_topic-0@2]
 ```
 
 ## Step 11.
@@ -162,9 +160,9 @@ SendResult [producerRecord=ProducerRecord(topic=New_topic, partition=null, heade
 To set Long as the key type and DTO as the value type, you need to manually create the KafkaTemplate object.
 
 The object of ProducerFactory<K, V> interface is passed to the constructor as a parameter.
-For example, DefaultKafkaProducerFactory<> with producer's config s a parameter.
+For example, DefaultKafkaProducerFactory<> with producer's config as a parameter.
 Therefore, the next step is to create KafkaProducerConfig and configure the producer’s parameters.
-11.1. Create a UserDTO class
+11.1. Create a UserDTO class.
 ```java
 @Data
 public class UserDTO {
@@ -191,6 +189,9 @@ public class Address {
 @Configuration
 public class KafkaProducerConfig {
     
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String kafkaServer;
+
     @Bean
     public Map<String, Object> producerConfigs() {
         Map<String, Object> props = new HashMap<>();
@@ -214,7 +215,7 @@ public class KafkaProducerConfig {
 11.3. Fix changes in a MesssageController class.
 ```java
 @RestController
-@RequestMapping("message")
+@RequestMapping("msg")
 @RequiredArgsConstructor
 public class MessageController {
 
@@ -222,7 +223,8 @@ public class MessageController {
 
     @PostMapping
     public void send(Long msgId, UserDTO msg) {
-        ListenableFuture<SendResult<Long, UserDTO>> future = kafkaTemplate.send("New_topic", msgId, msg);
+        msg.setAddress(new Address("Russia", "Moscow", "Lenina", 2L, 100L));
+        ListenableFuture<SendResult<Long, UserDTO>> future = kafkaTemplate.send("msg", msgId, msg);
         future.addCallback(System.out::println, System.err::println);
         kafkaTemplate.flush();
     }
@@ -231,19 +233,93 @@ public class MessageController {
 
 ## Step 12.
 Make a request in Postman.
-```json
-{
-	"msgId": 1,
-	"msg":{ 
-		"age": 18,
-		"name" : "Igor",
-		"address":{
-			"country": "Russia",
-			"city": "Moscow",
-			"street": "Lenina",
-			"homeNumber":2,
-			"flatNumber":100
-		}
-	}
+![Image alt](https://github.com/camelya58/kafka-producer-consumer/raw/sophistication/images/image2.png)
+
+And we get the following string in console.
+```
+SendResult [producerRecord=ProducerRecord(topic=msg, partition=null, headers=RecordHeaders(headers = [RecordHeader(key = __TypeId__, value = [99, 111, 109, 46, 103, 105, 116, 104, 117, 98, 46, 99, 97, 109, 101, 108, 121, 97, 53, 56, 46, 107, 97, 102, 107, 97, 112, 114, 111, 100, 117, 99, 101, 114, 99, 111, 110, 115, 117, 109, 101, 114, 46, 100, 116, 111, 46, 85, 115, 101, 114, 68, 84, 79])], isReadOnly = true), key=9, value=UserDTO(age=18, name=Igor, address=Address(country=Russia, city=Moscow, street=Lenina, homeNumber=2, flatNumber=100)), timestamp=null), recordMetadata=msg-0@27]
+{"age":18,"name":"Igor","address":{"country":"Russia","city":"Moscow","street":"Lenina","homeNumber":2,"flatNumber":100}}
+```
+
+## Step 13
+Complicate the consumer.
+
+Change the consumer method with a string in the parameter to another type as producer has
+and get some information about received message.
+```java
+@KafkaListener(topics="msg")
+    public void orderListener(ConsumerRecord<Long, UserDTO> record) {
+        System.out.println(record.partition());
+        System.out.println(record.key());
+        System.out.println(record.value());
+    }
+```
+And you'll get the following:
+```
+0
+       
+{"age":18,"name":"Igor","address":{"country":"Russia","city":"Moscow","street":"Lenina","homeNumber":2,"flatNumber":100}}
+SendResult [producerRecord=ProducerRecord(topic=msg, partition=null, 
+headers=RecordHeaders(headers = [RecordHeader(key = __TypeId__, value = 
+[99, 111, 109, 46, 103, 105, 116, 104, 117, 98, 46, 99, 97, 109, 101, 108, 121, 97, 53, 56, 46, 107, 97, 102, 107, 97, 
+112, 114, 111, 100, 117, 99, 101, 114, 99, 111, 110, 115, 117, 109, 101, 114, 46, 100, 116, 111, 46, 85, 115, 101, 114, 
+68, 84, 79])], isReadOnly = true), key=3, value=UserDTO(age=18, name=Igor, address=Address(country=Russia, city=Moscow,
+street=Lenina, homeNumber=2, flatNumber=100)), timestamp=null), recordMetadata=msg-0@28]
+```
+There isn't any information about key.
+Due to the fact that the default key type is "string", but we want to get "long"
+we need to configure some settings for a consumer.
+ 
+ ## Step 14
+Create class KafkaConsumerConfig.
+It has the same configurations as a producer but we use a deserializer instead of a serializer.
+```java
+@Configuration
+public class KafkaConsumerConfig {
+
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String kafkaServer;
+
+    @Value("${spring.kafka.consumer.group-id}")
+    private String kafkaGroupId;
+
+    @Bean
+    public Map<String, Object> consumerConfigs() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaGroupId);
+        return props;
+    }
+
+    @Bean
+    public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<Long, UserDTO> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<Long, UserDTO> consumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerConfigs());
+    }
+
 }
 ```
+And now we will receive all parameters.
+```
+0
+4       
+{"age":18,"name":"Igor","address":{"country":"Russia","city":"Moscow","street":"Lenina","homeNumber":2,"flatNumber":100}}
+SendResult [producerRecord=ProducerRecord(topic=msg, partition=null, 
+headers=RecordHeaders(headers = [RecordHeader(key = __TypeId__, value = 
+[99, 111, 109, 46, 103, 105, 116, 104, 117, 98, 46, 99, 97, 109, 101, 108, 121, 97, 53, 56, 46, 107, 97, 102, 107, 97, 
+112, 114, 111, 100, 117, 99, 101, 114, 99, 111, 110, 115, 117, 109, 101, 114, 46, 100, 116, 111, 46, 85, 115, 101, 114, 
+68, 84, 79])], isReadOnly = true), key=3, value=UserDTO(age=18, name=Igor, address=Address(country=Russia, city=Moscow,
+street=Lenina, homeNumber=2, flatNumber=100)), timestamp=null), recordMetadata=msg-0@28]
+```
+Now everything works correct.
+
+This is an easy way to get to know Apache Kafka.
