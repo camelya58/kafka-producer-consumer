@@ -126,6 +126,7 @@ spring.kafka.consumer.group-id=app.2
 
 ## Step 9
 The simple project is ready. Now We need to send a request with a key and value of type String using Postman.
+
 ![Image alt](https://github.com/camelya58/kafka-producer-consumer/raw/sophistication/images/image1.png)
 
 If we received this message in the console, everything works correctly!
@@ -233,6 +234,7 @@ public class MessageController {
 
 ## Step 12.
 Make a request in Postman.
+
 ![Image alt](https://github.com/camelya58/kafka-producer-consumer/raw/sophistication/images/image2.png)
 
 And we get the following string in console.
