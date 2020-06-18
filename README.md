@@ -24,11 +24,11 @@ Configure Zookeeper.
 - open the file "zookeeper.properties";
 - find and change the path for dataDir to the desired directory.
 Change this:
-```properties
+```
 dataDir=/tmp/zookeeper
 ```
 to this, for example:
-```properties
+```
 dataDir=/Users/user/Applications/kafka_2.13-2.5.0/data/zookeeper
 ```
 
@@ -38,11 +38,11 @@ Configure Kafka server.
 - open the file "server.properties";
 - find and change the path for log.dirs to the desired directory.
 Change this:
-```properties
+```
 log.dirs=/tmp/kafka-logs
 ```
 to this, for example:
-```properties
+```
 log.dirs=/Users/igor/Applications/kafka_2.13-2.5.0/data/kafka
 ```
 
@@ -120,7 +120,7 @@ public class KafkaProducerConsumerApplication {
 }
 ```
 It is necessary to write the group-id for the consumer in application.properties. Otherwise, the application will not start.
-```properties
+```
 spring.kafka.consumer.group-id=app.2
 ```
 
@@ -144,11 +144,20 @@ and call the addCallback method with parameters - SuccessCallback and FailureCal
 These are functional interfaces. The method of the first interface will be called in case of successful sending of the message, 
 and the method of the second interface in case of failure.
 ```java
-public void send(String msgId, String msg) {
+@RestController
+@RequestMapping("msg")
+@RequiredArgsConstructor
+public class MessageController {
+
+    private final KafkaTemplate<Long, UserDTO> kafkaTemplate;
+
+    @PostMapping
+    public void send(String msgId, String msg) {
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send("New_topic", msgId, msg);
         future.addCallback(System.out::println, System.err::println);
         kafkaTemplate.flush();
     }
+}
 ```
 We will receive:
 ```
@@ -249,12 +258,17 @@ Complicate the consumer.
 Change the consumer method with a string in the parameter to another type as producer has
 and get some information about received message.
 ```java
-@KafkaListener(topics="msg")
+@EnableKafka
+@SpringBootApplication
+public class KafkaProducerConsumerApplication {
+    
+    @KafkaListener(topics="msg")
     public void orderListener(ConsumerRecord<Long, UserDTO> record) {
         System.out.println(record.partition());
         System.out.println(record.key());
         System.out.println(record.value());
     }
+}
 ```
 And you'll get the following:
 ```
