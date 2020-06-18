@@ -313,7 +313,7 @@ public class KafkaConsumerConfig {
 And now we will receive all parameters.
 ```
 0
-4       
+4       
 {"age":18,"name":"Igor","address":{"country":"Russia","city":"Moscow","street":"Lenina","homeNumber":2,"flatNumber":100}}
 SendResult [producerRecord=ProducerRecord(topic=msg, partition=null, 
 headers=RecordHeaders(headers = [RecordHeader(key = __TypeId__, value = 
