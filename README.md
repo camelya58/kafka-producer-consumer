@@ -4,7 +4,7 @@ Simple project with Apache Kafka to demonstrate message exchange.
 Stack: Apache Kafka, Maven, Lombok.
 
 ## Step 1
-Install Apache Kafka for MacOS X.
+Install [Apache Kafka](https://kafka.apache.org/downloads) for MacOS X.
 ```
 brew install kafka
 ```
